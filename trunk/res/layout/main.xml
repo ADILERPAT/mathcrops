@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layout_main"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:background="@drawable/background"
+    android:orientation="vertical" >
+    
+    <ViewFlipper android:id="@+id/details"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent">  
+
+        <RelativeLayout
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+           
+            android:orientation="vertical" >
+
+            <TextView
+                android:id="@+id/foo"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#000" />
+
+            <Button
+                android:id="@+id/grade_1"
+                android:background="@drawable/grade_1_button"
+                android:layout_width="250dip"
+                android:layout_height="250dip"
+                android:layout_gravity="center"
+             	android:layout_centerInParent="true"
+				android:layout_centerVertical="true"
+                />
+            
+            
+        </RelativeLayout>
+
+        <RelativeLayout
+               android:orientation="vertical"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent">
+
+			<TextView android:id="@+id/bar"
+			    android:layout_width="fill_parent"
+			    android:layout_height="wrap_content"
+			    android:textColor="#000" />
+			
+			 <Button
+                android:id="@+id/grade_2"
+                android:background="@drawable/grade_2_button"
+                android:layout_width="250dip"
+                android:layout_height="250dip"
+                android:layout_gravity="center"
+             	android:layout_centerInParent="true"
+				android:layout_centerVertical="true"
+                />
+        </RelativeLayout> 
+        
+          <RelativeLayout
+               android:orientation="vertical"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent">
+            
+			<TextView android:id="@+id/foobar"
+			    android:layout_width="fill_parent"
+			    android:layout_height="wrap_content"
+			    android:textColor="#000" />
+			
+			 <Button
+                android:id="@+id/grade_3"
+                android:background="@drawable/grade_3_button"
+                android:layout_width="250dip"
+                android:layout_height="250dip"
+                android:layout_gravity="center"
+             	android:layout_centerInParent="true"
+				android:layout_centerVertical="true"
+                />
+			                  
+        </RelativeLayout> 
+        
+    </ViewFlipper>
+    
+</LinearLayout>
