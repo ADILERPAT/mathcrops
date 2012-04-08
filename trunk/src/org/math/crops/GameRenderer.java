@@ -1,8 +1,11 @@
 package org.math.crops;
 
 import java.io.IOException;
+import java.util.Vector;
+
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
+
 import android.content.Context;
 import android.graphics.PointF;
 import android.opengl.GLSurfaceView;
@@ -11,30 +14,26 @@ import android.util.Log;
 
 public class GameRenderer implements GLSurfaceView.Renderer {
 
-	/*
-	 * Render settings declarations
-	 */
+	/** Render settings declarations */
 	public Context context;
 	public int screenW, screenH;
 	private GL10 gl;
+	public Unprojector unproj;
 
-	/*
-	 * Assets
-	 */
+	/** Assets */
 	private Background background;
-	private Element avatar;
 
-	/*
-	 * Fonts
-	 */
+	/* Needs to be updated for every new element */
+	private int NUM_OF_ELEMENTS = 2;
+	Vector<Element> gameElements;
+
+	private Element avatar;
+	private Element e;
+
+	/** Fonts */
 	private TextFont ArialBig;
 
-	/*
-	 * Game states
-	 */
-	public PointF droidPosOffset;
-
-	/*
+	/**
 	 * Renderer Constructor: needs current context and device screen parameters
 	 * from activity/GLSurfaceView which is being called from.
 	 */
@@ -84,14 +83,29 @@ public class GameRenderer implements GLSurfaceView.Renderer {
 		initGame(gl);
 	}
 
-	private void initGame(GL10 gl) {
-		this.gl = gl;
+	private void initGame(GL10 g) {
+		this.gl = g;
+		unproj = new Unprojector(screenW, screenH, gl);
+		gameElements = new Vector<Element>();
 
+		/*
+		 * Initializing a background
+		 */
 		background = new Background(R.drawable.cropfield, gl, context);
 
-		avatar = new Element(0.2f, 0.2f, screenW / 2, screenH / 2,
-				R.drawable.droid_avatar, gl, context);
-		droidPosOffset = new PointF(0, 0);
+		/*
+		 * Initializing Game Elements
+		 */
+		avatar = new Element(screenW, screenH, 0.2f, 0.2f, screenW / 2,
+				screenH / 2, -1.0f, R.drawable.droid_avatar, "Avatar", gl,
+				context);
+		// Add element to list of gameElements
+		gameElements.add(avatar);
+
+		e = new Element(screenW, screenH, 0.1f, 0.1f, 200f, 200f, -1.0f,
+				R.drawable.android, "Droid", gl, context);
+		// Add element to list of gameElements
+		gameElements.add(e);
 
 		// Load font file from Assets
 		ArialBig = new TextFont(this.context, gl);
@@ -131,9 +145,24 @@ public class GameRenderer implements GLSurfaceView.Renderer {
 		gl.glEnable(GL10.GL_DEPTH_TEST);
 
 		/*
-		 * Drawing droid avatar
+		 * Drawing game elements
 		 */
-		avatar.drawAt(droidPosOffset.x, droidPosOffset.y, -1.0f);
+		drawGameElements();
+	}
+
+	private void drawGameElements() {
+		int i;
+		for (i = 0; i < NUM_OF_ELEMENTS; ++i) {
+			gameElements.elementAt(i).draw();
+		}
+	}
+
+	private void drawText(GL10 gl, String text, int x, int y, float scale) {
+		gl.glPushMatrix();
+		ArialBig.SetPolyColor(0f, 0f, 0f);
+		ArialBig.SetScale(scale);
+		ArialBig.PrintAt(gl, text, x, y);
+		gl.glPopMatrix();
 	}
 
 	@Override
@@ -166,70 +195,34 @@ public class GameRenderer implements GLSurfaceView.Renderer {
 		gl.glLoadIdentity();
 	}
 
-	private void drawText(GL10 gl, String text, int x, int y, float scale) {
-		gl.glPushMatrix();
-		ArialBig.SetPolyColor(0f, 0f, 0f);
-		ArialBig.SetScale(scale);
-		ArialBig.PrintAt(gl, text, x, y);
-		gl.glPopMatrix();
+	/**
+	 * Update game states based on user input
+	 * 
+	 * @param touchMoved
+	 */
+	public void Update(PointF touchMoved) {
+		float m[] = unproj.unproject(touchMoved);
+		int i;
+
+		for (i = 0; i < NUM_OF_ELEMENTS; ++i) {
+			if (gameElements.elementAt(i).picked()) {
+				gameElements.elementAt(i).setOffset((new PointF(m[0], m[1])));
+				gameElements.elementAt(i).updatePosition(touchMoved);
+				//gameElements.elementAt(i).setPicked(false);
+			}
+		}
 	}
 
 	/**
-	 * Unproject 2D touch screen coordinates to 3D world
+	 * Check for each element if it is being picked
 	 * 
-	 * @param x
-	 * @param y
-	 * @return result : type float []
+	 * @param touhStart
 	 */
-	private MatrixGrabber mMatrixGrabber = new MatrixGrabber();
-
-	public float[] unproject(PointF touch) {
-		/*
-		 * Cache 2D touch location (invert y)
-		 */
-		float x = touch.x;
-		float y = (int) (screenH - touch.y);
-
-		mMatrixGrabber.getCurrentState(gl);
-		int[] view = { 0, 0, screenW, screenH };
-		float[] pos = new float[4];
-		float[] result = null;
-
-		int retval = GLU.gluUnProject(x, y, 0, mMatrixGrabber.mModelView, 0,
-				mMatrixGrabber.mProjection, 0, view, 0, pos, 0);
-
-		if (retval != GL10.GL_TRUE) {
-
-			Log.e("unproject", GLU.gluErrorString(retval));
-
-		} else {
-
-			result = new float[3];
-			result[0] = pos[0] / pos[3];
-			result[1] = pos[1] / pos[3];
-			result[2] = pos[2] / pos[3];
-			result = pos;
-
-		}
-		return result;
-	}
-
-	public void Update(PointF touchMoved) {
-		float m[] = unproject(touchMoved);
-
-		if (avatarPicked) {
-			droidPosOffset.set(new PointF(m[0], m[1]));
-			avatar.updatePosition(touchMoved);
-		}
-	}
-
 	public void touchUpdate(PointF touchStart) {
-		/*
-		 * Check for each element if it is being picked
-		 */
-		float pos[] = unproject(avatar.getPosition());
-		avatarPicked = avatar.picked(touchStart, new PointF(pos[0], pos[1]));
+		int i;
+		for (i = 0; i < NUM_OF_ELEMENTS; ++i) {
+			gameElements.elementAt(i).setPicked(
+					gameElements.elementAt(i).isPicked(touchStart));
+		}
 	}
-
-	private boolean avatarPicked;
 }
