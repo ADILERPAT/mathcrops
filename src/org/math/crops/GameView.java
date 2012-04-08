@@ -9,7 +9,6 @@ import android.content.Context;
 import android.graphics.PixelFormat;
 import android.graphics.PointF;
 import android.opengl.GLSurfaceView;
-import android.util.Log;
 import android.view.MotionEvent;
 
 public class GameView extends GLSurfaceView {
@@ -37,6 +36,7 @@ public class GameView extends GLSurfaceView {
 				return new MatrixTrackingGL(gl);
 			}
 		});
+		
 
 		/*
 		 * My workaround so far was to change the app from RGB565 to RGBA8888.
@@ -73,7 +73,7 @@ public class GameView extends GLSurfaceView {
 
 		case MotionEvent.ACTION_DOWN:
 			touchStart = getTouchPoint(e);
-			float t[] = mRenderer.unproject(touchStart);
+			float t[] = mRenderer.unproj.unproject(touchStart);
 			touchStart.set(t[0], t[1]);
 			mRenderer.touchUpdate(touchStart);
 			
