@@ -1,6 +1,6 @@
-package org.math.crops;
+package com.creatrixelit;
 
-import org.math.crops.R;
+import com.creatrixelit.R;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -18,13 +18,22 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ViewFlipper;
 
-public class mathcrops extends Activity implements OnTouchListener {
+/**
+ * This is the menu class/Activity which instantiates the correct GameActivty.
+ * 
+ * I am using .xml animations to make a neat slide-menu, similar (although not
+ * as polished) to Angry Birds.
+ * 
+ * @author Creatrix Elit
+ *
+ */
+public class MainMenu extends Activity implements OnTouchListener {
 
 	float downXValue;
 	Display display;
 	int width, height;
 	Point size;
-
+	
 	/** Called when the activity is first created. */
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -81,12 +90,17 @@ public class mathcrops extends Activity implements OnTouchListener {
 
 	}
 
+	/**
+	 * Here is where I call the corresponding game based on the menu entry.
+	 *  
+	 * @param lvl - grade level
+	 */
 	private void StartGame(int lvl) {
 		Intent launchGame;
 
 		switch (lvl) {
 		case 1:
-			launchGame = new Intent(this, GameActivity.class);
+			launchGame = new Intent(this, MathCrops.class);
 			startActivity(launchGame);
 			break;
 
@@ -96,7 +110,7 @@ public class mathcrops extends Activity implements OnTouchListener {
 			break;
 
 		case 3:
-			launchGame = new Intent(this, GameActivity.class);
+			launchGame = new Intent(this, MathCrops.class);
 			startActivity(launchGame);
 			break;
 
