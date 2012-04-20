@@ -97,26 +97,21 @@ public class MainMenu extends Activity implements OnTouchListener {
 	 */
 	private void StartGame(int lvl) {
 		Intent launchGame;
-
-		switch (lvl) {
-		case 1:
-			launchGame = new Intent(this, MathCrops.class);
-			startActivity(launchGame);
-			break;
-
-		case 2:
-			launchGame = new Intent(this, GLRendererActivity.class);
-			startActivity(launchGame);
-			break;
-
-		case 3:
-			launchGame = new Intent(this, MathCrops.class);
-			startActivity(launchGame);
-			break;
-
-		}
+		
+		// Create a bundle with the level info
+		Bundle bundle = new Bundle();
+		// bundle.putString("param1", "" + lvl);
+		bundle.putString("param1", "" + 8);
+		
+		// Start an intent
+		launchGame = new Intent(this.getApplicationContext(), MathCrops.class);
+		
+		// Pass bundle to the new intent
+		launchGame.putExtras(bundle);
+		
+		// Start the activity
+		startActivity(launchGame);
 	}
-
 	public boolean onTouch(View arg0, MotionEvent arg1) {
 
 		// Get the action that was done on this touch event

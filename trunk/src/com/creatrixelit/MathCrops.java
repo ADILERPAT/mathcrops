@@ -1,7 +1,6 @@
 package com.creatrixelit;
 
 import java.io.IOException;
-import java.lang.annotation.ElementType;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -35,6 +34,11 @@ import android.view.MotionEvent;
 import android.view.Window;
 import android.view.WindowManager;
 
+/**
+ * 
+ * @author Creatrix Elit
+ * 
+ */
 public class MathCrops extends Activity {
 
 	/** sound manager instance */
@@ -49,10 +53,18 @@ public class MathCrops extends Activity {
 	/** Screen display info */
 	private Display display;
 
+	/** Game Level */
+	private static int lvl;
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		// sets the Bundle
 		super.onCreate(savedInstanceState);
+
+		Bundle bundle = this.getIntent().getExtras();
+		if (bundle.getString("param1") != null) {
+			lvl = getLevelNum(bundle.getString("param1"));
+		}
 
 		// requesting to turn the title OFF
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -77,6 +89,35 @@ public class MathCrops extends Activity {
 		LoadSounds();
 	}
 
+	private int getLevelNum(String level) {
+		if (level.compareTo("1") == 0)
+			return 1;
+		else if (level.compareTo("2") == 0)
+			return 2;
+		else if (level.compareTo("3") == 0)
+			return 3;
+		else if (level.compareTo("4") == 0)
+			return 4;
+		else if (level.compareTo("5") == 0)
+			return 5;
+		else if (level.compareTo("6") == 0)
+			return 6;
+		else if (level.compareTo("7") == 0)
+			return 7;
+		else if (level.compareTo("8") == 0)
+			return 8;
+		else if (level.compareTo("9") == 0)
+			return 9;
+		else if (level.compareTo("10") == 0)
+			return 10;
+		else if (level.compareTo("11") == 0)
+			return 11;
+		else if (level.compareTo("12") == 0)
+			return 12;
+		else
+			return 0;
+	}
+
 	private void LoadSounds() {
 		mSoundManager = new SoundManager();
 		mSoundManager.initSounds(getBaseContext());
@@ -84,6 +125,7 @@ public class MathCrops extends Activity {
 		mSoundManager.addSound(2, R.raw.beep6); // correct answer
 		mSoundManager.addSound(3, R.raw.click); // hint board
 		mSoundManager.addSound(4, R.raw.beep1); // wrong answer
+		mSoundManager.addSound(5, R.raw.up); // ship goes up
 	}
 
 	@Override
@@ -123,7 +165,7 @@ public class MathCrops extends Activity {
 		 * Constructor
 		 * 
 		 * @param context
-		 *            view
+		 * 
 		 * */
 		public GameSurfaceView(Context context) {
 			super(context);
@@ -175,8 +217,9 @@ public class MathCrops extends Activity {
 				return true;
 
 			case MotionEvent.ACTION_UP:
-				touchStart = new PointF();
-				touchMoved = new PointF();
+				// Reset input handlers
+				ResetHandlers();
+
 				// touch off screen: hack
 				mRenderer.touchUpdate(new PointF(screenW + 1, screenH + 1));
 
@@ -194,6 +237,14 @@ public class MathCrops extends Activity {
 
 		private PointF getDeltaMove(MotionEvent e) {
 			return new PointF(e.getX() - touchStart.x, e.getY() - touchStart.y);
+		}
+
+		private void ResetHandlers() {
+			touchStart = new PointF();
+			touchMoved = new PointF();
+
+			// this handles the held down button sound bug
+			mRenderer.button_picked_last = -1;
 		}
 	}
 
@@ -251,9 +302,9 @@ public class MathCrops extends Activity {
 		 */
 		private LessonBank lesson;
 		private int LESSON_NUM;
-		private boolean correct, STALLED;
-		private long prevtime = 0;
-		private float good_job_scale = 0;
+		private boolean correct, STALLED, bg_zoomed_in, ship_sound_played_yet,
+				play_ship_sound, bg_zoomed_out;
+		private float notification_scale = 0, bg_rot = 0.5f;
 
 		/**
 		 * Keep track of mElements easily in a Vetor array
@@ -268,6 +319,7 @@ public class MathCrops extends Activity {
 		public Unprojector unprojector;
 
 		public GameRenderer(Context context) {
+			Log.d("GameRenderer", "Initializing game...");
 			init(context);
 		}
 
@@ -280,6 +332,7 @@ public class MathCrops extends Activity {
 		}
 
 		private void loadTextures() {
+			Log.d("loadTextures", "Loading textures...");
 			// scene
 			Background_Texture = TextureLoader.loadTexture(gl,
 					R.drawable.cropfield);
@@ -287,13 +340,17 @@ public class MathCrops extends Activity {
 
 			// buttons
 			ButtonA_Texture = TextureLoader.loadTexture(gl, R.drawable.a);
-			ButtonAalt_Texture = TextureLoader.loadTexture(gl, R.drawable.a);
+			ButtonAalt_Texture = TextureLoader.loadTexture(gl,
+					R.drawable.a_pressed);
 			ButtonB_Texture = TextureLoader.loadTexture(gl, R.drawable.b);
-			ButtonBalt_Texture = TextureLoader.loadTexture(gl, R.drawable.b);
+			ButtonBalt_Texture = TextureLoader.loadTexture(gl,
+					R.drawable.b_pressed);
 			ButtonC_Texture = TextureLoader.loadTexture(gl, R.drawable.c);
-			ButtonCalt_Texture = TextureLoader.loadTexture(gl, R.drawable.c);
+			ButtonCalt_Texture = TextureLoader.loadTexture(gl,
+					R.drawable.c_pressed);
 			ButtonD_Texture = TextureLoader.loadTexture(gl, R.drawable.d);
-			ButtonDalt_Texture = TextureLoader.loadTexture(gl, R.drawable.d);
+			ButtonDalt_Texture = TextureLoader.loadTexture(gl,
+					R.drawable.d_pressed);
 
 			Hint_Button_Texture = TextureLoader.loadTexture(gl, R.drawable.tip);
 			Hint_Button_altTexture = TextureLoader.loadTexture(gl,
@@ -314,7 +371,7 @@ public class MathCrops extends Activity {
 			Ruler_Texture = TextureLoader.loadTexture(gl, R.drawable.ruler);
 
 			Good_Job_Texture = TextureLoader.loadTexture(gl,
-					R.drawable.good_job);
+					R.drawable.nice_job);
 
 		}
 
@@ -324,6 +381,7 @@ public class MathCrops extends Activity {
 
 		@Override
 		public void onSurfaceCreated(GL10 gl, EGLConfig config) {
+			Log.d("onSurfaceCrated", "Configuring...");
 			/*
 			 * Disable things that aren't needed
 			 */
@@ -377,7 +435,7 @@ public class MathCrops extends Activity {
 			InitializeGlobals();
 
 			/* Populate lesson Bank based on grade level */
-			lesson = new LessonBank(gl, 8); // grade level
+			lesson = new LessonBank(gl, lvl); // grade level
 
 			/**
 			 * note: Initialization order matters as they are added to the
@@ -436,7 +494,7 @@ public class MathCrops extends Activity {
 			dashboard = new Element(gl, 0.7f, 0.2f, // scale
 					(float) (screenW * 0.50), // x
 					(float) (screenH * 0.78), // y
-					-1.05f, // z
+					-1.03f, // z
 					Dashboard_Texture, // texture
 					"dashboard", Element.elmType.STATIC); // name
 
@@ -446,54 +504,57 @@ public class MathCrops extends Activity {
 			 * rendering.
 			 */
 
+			float Button_X = screenW * 0.85f;
+
+			float ButtonA_Y = screenH * 0.64f;
+			float ButtonB_Y = screenH * 0.72f;
+			float ButtonC_Y = screenH * 0.80f;
+			float ButtonD_Y = screenH * 0.88f;
+
 			/*
 			 * ELement::Button : Answer choice 'A' button
 			 */
-			choice_A = new Button(gl, 0.05f, 0.05f, (float) (screenW * 0.78),
-					(float) (screenH * 0.75), -1.0f, ButtonA_Texture, "A",
-					Button.type.ANSWER_CHOICE_BUTTON, ButtonAalt_Texture,
-					Element.elmType.CHOICE_BUTTON);
+			choice_A = new Button(gl, 0.1f, 0.025f, Button_X, ButtonA_Y, -1.0f,
+					ButtonA_Texture, "A", Button.type.ANSWER_CHOICE_BUTTON,
+					ButtonAalt_Texture, Element.elmType.CHOICE_BUTTON);
 			// Add elemnt to the list
 			mElements.add(choice_A);
 
 			/*
 			 * ELement::Button : Answer choice 'B' button
 			 */
-			choice_B = new Button(gl, 0.05f, 0.05f, (float) (screenW * 0.85),
-					(float) (screenH * 0.64), -1.0f, ButtonB_Texture, "B",
-					Button.type.ANSWER_CHOICE_BUTTON, ButtonBalt_Texture,
-					Element.elmType.CHOICE_BUTTON);
+			choice_B = new Button(gl, 0.1f, 0.025f, Button_X, ButtonB_Y, -1.0f,
+					ButtonB_Texture, "B", Button.type.ANSWER_CHOICE_BUTTON,
+					ButtonBalt_Texture, Element.elmType.CHOICE_BUTTON);
 			// Add elemnt to the list
 			mElements.add(choice_B);
 
 			/*
 			 * ELement::Button : Answer choice 'C' button
 			 */
-			choice_C = new Button(gl, 0.05f, 0.05f, (float) (screenW * 0.92),
-					(float) (screenH * 0.75), -1.0f, ButtonC_Texture, "C",
-					Button.type.ANSWER_CHOICE_BUTTON, ButtonCalt_Texture,
-					Element.elmType.CHOICE_BUTTON);
+			choice_C = new Button(gl, 0.1f, 0.025f, Button_X, ButtonC_Y, -1.0f,
+					ButtonC_Texture, "C", Button.type.ANSWER_CHOICE_BUTTON,
+					ButtonCalt_Texture, Element.elmType.CHOICE_BUTTON);
 			// Add elemnt to the list
 			mElements.add(choice_C);
 
 			/*
 			 * ELement::Button : Answer choice 'D' button
 			 */
-			choice_D = new Button(gl, 0.05f, 0.05f, (float) (screenW * 0.85),
-					(float) (screenH * 0.86), -1.0f, ButtonD_Texture, "D",
-					Button.type.ANSWER_CHOICE_BUTTON, ButtonDalt_Texture,
-					Element.elmType.CHOICE_BUTTON);
+			choice_D = new Button(gl, 0.1f, 0.025f, Button_X, ButtonD_Y, -1.0f,
+					ButtonD_Texture, "D", Button.type.ANSWER_CHOICE_BUTTON,
+					ButtonDalt_Texture, Element.elmType.CHOICE_BUTTON);
 			// Add elemnt to the list
 			mElements.add(choice_D);
 
 			/*
 			 * This one is for certain itmes only
 			 */
-			good_job = new Button(gl, 0.5f, 0.5f, (float) (screenW * 0.5),
+			good_job = new Button(gl, 0.3f, 0.3f, (float) (screenW * 0.5),
 					(float) (screenH * 0.5), -1.0f, Good_Job_Texture,
 					"good_Job", Button.type.NOTIFICATION, Good_Job_Texture,
 					Element.elmType.BUTTON);
-			
+
 			// add this to mElements when appropriate
 		}
 
@@ -501,8 +562,8 @@ public class MathCrops extends Activity {
 			/*
 			 * Element: Ruler
 			 */
-			ruler = new DraggableElement(gl, 0.05f, 0.10f, // Scale
-					screenW * 9 / 10, screenH * 1 / 8, -1.0f, // (X,Y,Z)
+			ruler = new DraggableElement(gl, 0.16f, 0.1f, // Scale
+					screenW * 9 / 10, screenH * 1 / 8, -1f, // (X,Y,Z)
 					Ruler_Texture, // Texture
 					"Ruler");
 
@@ -541,136 +602,288 @@ public class MathCrops extends Activity {
 			 */
 			gl.glLoadIdentity();
 
-			/*
-			 * Disable depth test for static objects
-			 */
-			gl.glDisable(GL10.GL_DEPTH_TEST);
-
-			/*
-			 * Drawing background
-			 */
-			background.draw(gl);
-
-			/*
-			 * Drawing the lesson's crop circles
-			 */
-			lesson.drawObjectsForLesson(gl, LESSON_NUM);
-
-			/*
-			 * Drawingdashboard
-			 */
-			dashboard.draw(gl);
-
-
-			/*
-			 * Ask a question and didplay the answers available.
-			 */
-			askQuestion();
-			displayAnswerChoices();
-
-			/*
-			 * Enable Depth test again and reset modelview matrix
-			 */
-			gl.glEnable(GL10.GL_DEPTH_TEST);
-			gl.glLoadIdentity();
-
-			/*
-			 * Drawing game elements
-			 */
-			drawmElements();
-			
-			/**
-			 * Done with drawing the scene, now onto game mechanics
-			 */
-			
-			/*
-			 * Checking if answer is correct
-			 */
-			correct = isCorrect();
-			if (correct) {
-				// if no more lessons, user wins game
-				if ( lesson.NUM_OF_LESSONS-1 == LESSON_NUM ) {
-					// TODO
+			// Firstly, check if the lesson was been implemented
+			if ( lesson.NUM_OF_LESSONS != -1 ) {
+				/*
+				 * 
+				 * 
+				 * Disable depth test for static objects
+				 */
+				gl.glDisable(GL10.GL_DEPTH_TEST);
+				/*
+				 * 
+				 * 
+				 * Drawing background
+				 */
+				if (STALLED) {
+					play_ship_sound = true;
+					AnimateBackgroundZoomOut();
+				} else {
+					AnimateBackgroundZoomIn();
 				}
-				else {
-					LESSON_NUM++;	
+				background.setDepth(bg_rot);
+				background.draw(gl);
+				/*
+				 * 
+				 * 
+				 * Drawing the lesson's crop circles if lesson is not stalled
+				 */
+				if (!STALLED && bg_zoomed_in) {
+					lesson.drawObjectsForLesson(gl, LESSON_NUM);
 				}
-				Stall();
-			}
-			
-			
-			// Stall the application with a notification button
-			if (STALLED) {
-				// while correct choice taken and notification is not picked
-				NotificationScaleAnimation();
-				good_job.setScale(good_job_scale);
-				good_job.draw(gl);
+				/*
+				 * 
+				 * 
+				 * Drawingdashboard
+				 */
+				dashboard.draw(gl);
+				/*
+				 * 
+				 * 
+				 * Draing the choice buttons
+				 */
+				drawDashboardButtons();
+				/*
+				 * 
+				 * 
+				 * Ask a question and didplay the answers available. if game isn't
+				 * stalled
+				 */
+				if (!STALLED && bg_zoomed_in) {
+					askQuestion();
+					displayAnswerChoices();
+					/*
+					 * 
+					 * 
+					 * If user is using the ruler draggable object, display the
+					 * lesson's measurements information.
+					 */
+					if (ruler.picked()) {
+						if ( isOnTopOfCropcircle(ruler) )
+							printLessonInfo();
+					}
+				}
+				/*
+				 * 
+				 * Enable Depth test again and reset modelview matrix
+				 */
+				gl.glEnable(GL10.GL_DEPTH_TEST);
+				gl.glLoadIdentity();
+				/*
+				 * 
+				 * 
+				 * Drawing game elements
+				 */
+				drawmElements();
+				if (!STALLED && bg_zoomed_in) { // When in play
+					/*
+					 * 
+					 * 
+					 * If user pressed the 'TIP' button, display the lesson's
+					 * tip
+					 */
+					if (Hint_Button.SCALED_UP) {
+						printLessonHint();
+					}
+					/*
+					 * 
+					 * 
+					 * Checking if answer is correct
+					 */
+					correct = isCorrect();
+					if (correct) {
+						// if no more lessons, user wins game
+						if (lesson.NUM_OF_LESSONS - 1 == LESSON_NUM) {
+							// TODO win
+						} else {
+							LESSON_NUM++;
+						}
+						Stall();
+					}
+				}
+				// Stall the application with a notification button
+				if (STALLED) {
+					// while correct choice taken and notification is not picked
+					// if ( bg_zoomed_out )
+					NotificationScaleAnimation();
+					good_job.setScale(notification_scale);
+					good_job.draw(gl);
 
-				if (good_job.picked()) {
-					// when picked, reset all
-					good_job_scale = 0.0f;
-					good_job.setPicked(false);
-					UnStall();
+					if (good_job.picked()) {
+						// when picked, reset all
+						ship_sound_played_yet = false;
+						notification_scale = 0.0f;
+						good_job.setPicked(false);
+						UnStall();
+					}
 				}
+			}// Lesson not implemented, revert to default notificaiton
+			else {
+				// TODO
 			}
 		}
 
+		private boolean isOnTopOfCropcircle(DraggableElement elm) {
+			float rx = elm.getPosition().x;
+			float ry = elm.getPosition().y;
+
+			if ( rx > screenW/2 - 150 && rx < screenW/2 + 150 ) {
+				if ( ry > screenH/2 - 250 && ry < screenH/2 ) {
+					return true;
+				}
+				else return false;
+			} else return false;
+		}
+
+		/**
+		 * @return true if CHOICE_BUTTON picked is the correct answer
+		 */
+		private int button_picked_last;
+
 		private boolean isCorrect() {
-			/*
-			 * play sound based on picked answer
-			 */
 			int i;
 			for (i = 0; i < NUM_OF_ELEMENTS; ++i) {
+				// Make sure element is a CHOICE_BUTTON
 				Element elm = mElements.elementAt(i);
-				String answer = lesson.getAnswer(LESSON_NUM);
-
-				if (elm.picked() && elm.type() == Element.elmType.CHOICE_BUTTON) {
-
-					if (answer.compareToIgnoreCase(elm.name) == 0) {
-						mSoundManager.playSound(2); // right answer
-						return true;
-
-					} else {
-						mSoundManager.playSound(4); // wrong answer
-						return false;
+				if (elm.type() == Element.elmType.CHOICE_BUTTON) {
+					// Check for picking
+					if (elm.picked() && i != button_picked_last) {
+						// I don't want the same button held down
+						// to be checked at every frame.
+						button_picked_last = i;
+						// Get the answer for lesson and compare
+						String answer = lesson.getAnswer(LESSON_NUM);
+						if (answer.compareToIgnoreCase(elm.name) == 0) {
+							// play correct sound once
+							mSoundManager.playSound(2); // right answer
+							return true;
+						} else {
+							// play wrong sound
+							mSoundManager.playSound(4);
+							return false;
+						}
 					}
-
 				}
 			}
 			return false;
 		}
 
-		private void NotificationScaleAnimation() {
-			long curtime = SystemClock.uptimeMillis();
-			long timeDiff = curtime - prevtime;
-			long t = 0;
-			if (timeDiff > 24) {
-				prevtime = curtime;
-				t++;
-				good_job_scale += 0.2 * t * (t * t) + 0.05f;
-				if (good_job_scale > 1f) {
-					good_job_scale = 1f;
+		/****************************
+		 * 
+		 * Animation Functions
+		 ***************************/
+		private long zoom_prevtime = 0;
+
+		private void AnimateBackgroundZoomIn() {
+			/* ***********************************
+			 * 
+			 * Zoom in 2 units every 1 second
+			 ************************************ */
+			long mTime = SystemClock.uptimeMillis();
+			long timeDiff = mTime - zoom_prevtime;
+			if (timeDiff > 1) {
+				// Keep track of time
+				zoom_prevtime = mTime;
+				
+				// 2 units
+				bg_rot += 2f;
+				
+				// (Cap at -40 units of depth)
+				if (bg_rot > -40f) {
+					bg_rot = -40f;
+					
+					// Set animation flag
+					bg_zoomed_in = true;
+				} else {
+					// Set animation flag
+					bg_zoomed_in = false;
 				}
 			}
 		}
 
+		private void AnimateBackgroundZoomOut() {
+			/* ***********************************
+			 * 
+			 * Play sound only once
+			 ************************************ */
+			if (play_ship_sound && !ship_sound_played_yet) {
+				mSoundManager.playSound(5);
+				play_ship_sound = false;
+				ship_sound_played_yet = true;
+			}
+			
+			/* ***********************************
+			 * 
+			 * Zoom out 2 units every 1 second
+			 ************************************ */
+			long mTime = SystemClock.uptimeMillis();
+			long timeDiff = mTime - zoom_prevtime;
+			if (timeDiff > 1) {
+				// Keep track of time
+				zoom_prevtime = mTime;
+				
+				// Subtract 2 units
+				bg_rot -= 2f;
+				
+				// (Cap at frustum limit)
+				if (bg_rot < -100f) {
+					bg_rot = -100.0f;
+					
+					// set animation flag
+					bg_zoomed_out = true;
+				} else {
+					// set animation flag
+					bg_zoomed_out = false;
+				}
+			}
+		}
+
+		private long notification_prevtime = 0;
+
+		private void NotificationScaleAnimation() {
+			long mTime = SystemClock.uptimeMillis();
+			long timeDiff = mTime - notification_prevtime;
+			if (timeDiff > 1) {
+				notification_prevtime = mTime;
+				notification_scale += 0.20;
+				if (notification_scale > 1f) {
+					notification_scale = 1f;
+				}
+			}
+		}
+
+		/****************************
+		 * 
+		 * Game State Functions
+		 ***************************/
 		private void Stall() {
 			STALLED = true;
 			// temporarily add notification button to list of elements
 			mElements.add(good_job);
 			NUM_OF_ELEMENTS++;
 		}
-		
+
 		private void UnStall() {
 			mElements.removeElement(good_job);
 			NUM_OF_ELEMENTS--;
 			STALLED = false;
 		}
 
+		private void drawDashboardButtons() {
+			int i;
+			for (i = 0; i < NUM_OF_ELEMENTS; ++i) {
+				Element elm = mElements.elementAt(i);
+				if (elm.type() == Element.elmType.CHOICE_BUTTON)
+					elm.draw(gl);
+			}
+		}
+
 		private void drawmElements() {
 			int i;
 			for (i = 0; i < NUM_OF_ELEMENTS; ++i) {
-				mElements.elementAt(i).draw(gl);
+				Element elm = mElements.elementAt(i);
+				if (elm.type() != Element.elmType.CHOICE_BUTTON)
+					elm.draw(gl);
 			}
 		}
 
@@ -695,6 +908,26 @@ public class MathCrops extends Activity {
 						ANSWER_Y - height, 0.78f, 1.0f, 1.0f, 1f);
 			}
 		}
+		
+		private void printLessonInfo() {
+			int count = lesson.getLessonInfoCountAt(LESSON_NUM);
+			for ( int l=0; l < count; l++) {
+				drawText(lesson.getLessonInfoAt(LESSON_NUM, l), 
+						screenW * 9/14, screenH * 1/5 + mTextFont.GetTextHeight()*l, 
+						0.79f,
+						.1f, .0f, .1f);
+			}
+		}
+		
+		private void printLessonHint() {
+			int count = lesson.getHintLineCount(LESSON_NUM);
+			for ( int l=0; l < count; l++) {
+				drawText(lesson.getHintAtLine(LESSON_NUM, l), 
+						screenW * 1/10, screenH / 2 + mTextFont.GetTextHeight()*l*2, 
+						1.2f,
+						.1f, .0f, .1f);
+			}
+		}
 
 		private void drawText(String text, int x, int y, float scale, float r,
 				float g, float b) {
@@ -705,8 +938,14 @@ public class MathCrops extends Activity {
 			gl.glPopMatrix();
 		}
 
+		/***********************************
+		 * 
+		 * Override oGL 'onSurfaceChanged'
+		 **********************************/
 		@Override
 		public void onSurfaceChanged(GL10 gl, int width, int height) {
+			Log.d("onSurfaceChanged", "Configuring...");
+
 			GameRenderer.gl = gl;
 
 			if (height == 0) { // Prevent A Divide By Zero By
@@ -768,7 +1007,11 @@ public class MathCrops extends Activity {
 			int i;
 			for (i = 0; i < NUM_OF_ELEMENTS; ++i) {
 				Element elm = mElements.elementAt(i);
+
+				// Check for point piking
 				elm.setPicked(elm.isPicked(gl, touchStart));
+
+				// If it is indeed picked this time, update element
 				if (elm.picked()) {
 					elm.touchUpdate(gl, touchStart);
 				}
@@ -784,8 +1027,8 @@ public class MathCrops extends Activity {
 		public static class Quad {
 			// Default vertices
 			private float vertices[] = { -140.0f, -100.0f, 0.0f, // 0,
-																	// Bottom
-																	// Left
+					// Bottom
+					// Left
 					-140.0f, 100.0f, 0.0f, // 1, Top Left
 					140.0f, 100.0f, 0.0f, // 2, Top Right
 					140.0f, -100.0f, 0.0f, // 3, Bottom Right
@@ -887,15 +1130,20 @@ public class MathCrops extends Activity {
 
 			private final int height = 50;
 			private final int width = 70;
+			private float depth = -40f;
 
 			public Background(GL10 gl) {
 				plane = new Quad(width, height);
 			}
 
+			public void setDepth(float d) {
+				depth = d;
+			}
+
 			public void draw(GL10 gl) {
 				gl.glPushMatrix();
 				gl.glBindTexture(GL10.GL_TEXTURE_2D, Background_Texture);
-				gl.glTranslatef(0.0f, 0.0f, -100f);
+				gl.glTranslatef(0.0f, 0.0f, depth);
 				plane.draw(gl);
 				gl.glPopMatrix();
 			}
@@ -1146,7 +1394,10 @@ public class MathCrops extends Activity {
 						break;
 
 					case ANSWER_CHOICE_BUTTON:
-						//
+						if (CHOICE_BUTTON_PICKED) {
+							CHOICE_BUTTON_PICKED = false;
+						} else
+							CHOICE_BUTTON_PICKED = true;
 						break;
 
 					case NOTIFICATION:
@@ -1158,20 +1409,34 @@ public class MathCrops extends Activity {
 
 			@Override
 			public void draw(GL10 gl) {
-				/*
-				 * Hint Button scales up or down
-				 */
-				if (HINT_BUTTON_PICKED) {
-					// only once
-					if (!hint_sound_played) {
-						hint_sound_played = true;
-						mSoundManager.playSound(3);
+				switch (BUTTON_TYPE) {
+				case HINT_BUTTON:
+					if (HINT_BUTTON_PICKED) {
+						// only once
+						if (!hint_sound_played) {
+							hint_sound_played = true;
+							mSoundManager.playSound(3);
+						}
+						SCALED_UP = false;
+						scaleUp(gl);
+					} else {
+						SCALED_DOWN = false;
+						scaleDown(gl);
 					}
-					SCALED_UP = false;
-					scaleUp(gl);
-				} else {
-					SCALED_DOWN = false;
-					scaleDown(gl);
+					break;
+
+				case ANSWER_CHOICE_BUTTON:
+					if (CHOICE_BUTTON_PICKED) {
+						texture = otherTexture;
+						CHOICE_BUTTON_PICKED = false;
+					} else {
+						texture = orgTexture;
+					}
+					break;
+
+				case NOTIFICATION:
+					//
+					break;
 				}
 
 				// Draw the Button element
@@ -1194,7 +1459,7 @@ public class MathCrops extends Activity {
 
 					// project the new position onto the view
 					setOffset(unprojector.unproject(gl, getPosition()));
-
+					
 					// set the new alternative texture
 					texture = otherTexture;
 
@@ -1218,7 +1483,7 @@ public class MathCrops extends Activity {
 
 					// project the new position onto the view
 					setOffset(unprojector.unproject(gl, getPosition()));
-
+					
 					// set the new alternative texture
 					texture = orgTexture;
 
@@ -1226,6 +1491,7 @@ public class MathCrops extends Activity {
 					setElement(new Quad(width, height));
 
 					SCALED_DOWN = true;
+					SCALED_UP = false;
 				}
 			}
 
@@ -1320,32 +1586,42 @@ public class MathCrops extends Activity {
 
 		}
 
+		/*********************************************************
+		 * 
+		 * 
+		 * LESSON BANK
+		 ********************************************************/
 		/**
-		 * Oh, yes... the Lesson Bank. This will hold all questions along with
-		 * their corresponding answers and all of the assets that correspond to
-		 * the questions for their corresponding grade level!
+		 * This will hold all questions along with their corresponding answers
+		 * and all of the assets that correspond to the questions for their
+		 * corresponding grade level!
 		 * 
 		 * FUTURE: In the future, I would like to make this as dynamic as
 		 * possible. For instance, each lesson has a type associated which can
 		 * be generalized enough to simply read from a .xml or .txt file that
 		 * the teacher creates and populate new lessons for each grade level.
 		 * 
-		 * @author Creatrix Elit
-		 * 
 		 */
 		public class LessonBank {
-			/** Number of Lessons in the bank */
-			private int NUM_OF_LESSONS = 2;
-			private int QuestionLines[] = new int[NUM_OF_LESSONS];
-			private int HintLines[] = new int[NUM_OF_LESSONS];
+			
+			// Number of lessons in the grade:
+			// (Default is -1 for all unimplemented lessons)
+			private int NUM_OF_LESSONS = -1; 
+			
+			private int	[] 	QuestionLines;  // Line count for each question
+			private int	[] 	HintLines;		// Line count for each lesson 'tip'
 
 			/** Q/A String arrays */
-			private String Question[][] = new String[NUM_OF_LESSONS][6];
-			private String Answer[] = new String[NUM_OF_LESSONS];
-			private String AnswerList[][] = new String[NUM_OF_LESSONS][2];
-			private String Hint[][] = new String[NUM_OF_LESSONS][10];
-			private Element Objects[][] = new Element[NUM_OF_LESSONS][4];
-			private int ObjectCount[] = new int[NUM_OF_LESSONS];
+			private String	[][] 	Question;	// [question number] [question]
+			private String	[] 		Answer;		// [answer to question number]
+			private String	[][] 	AnswerList;	// [line][answer string]
+			private String	[][] 	Hint;		// [line][hint string]
+			private Element	[][] 	Objects;	// [number][Element]
+			private int 	[]		ObjectCount;// [object count in lesson number]
+			
+			private String	[][] 	LessonInfo; // Additional lesson info metrics
+			private int		[]		LessonInfoCount;
+			
 			/**
 			 * Constructor
 			 * 
@@ -1356,6 +1632,216 @@ public class MathCrops extends Activity {
 				populateBank(gl, lvl);
 			}
 
+			/**
+			 * Draws the objects in current lesson 'lesson'
+			 * @param gl
+			 * @param i
+			 */
+			public void drawObjectsForLesson(GL10 gl, int lesson) {
+				for (int obj = 0; obj < getObjectCount(lesson); obj++) {
+					Objects[lesson][obj].draw(gl);
+				}
+			}
+
+			/**
+			 * Bank Population Methods
+			 * 	These are wehre all the lesson's can be created
+			 */
+			private void TwelfthGrade(GL10 gl) {
+				// TODO Auto-generated method stub
+
+			}
+
+			private void EleventhGrade(GL10 gl) {
+				// TODO Auto-generated method stub
+
+			}
+
+			private void TenthGrade(GL10 gl) {
+				// TODO Auto-generated method stub
+
+			}
+
+			private void NinthGrade(GL10 gl) {
+				// TODO Auto-generated method stub
+
+			}
+
+			private void EightGrade(GL10 gl) {
+				/* **************************************
+				 * 
+				 * Initialize variables for lesson
+				 ************************************** */
+				NUM_OF_LESSONS  = 	2;
+				QuestionLines 	= 	new int[NUM_OF_LESSONS];
+				HintLines 		= 	new int[NUM_OF_LESSONS];
+
+				Question 	= 	new String[NUM_OF_LESSONS][6];
+				Answer 		= 	new String[NUM_OF_LESSONS];
+				AnswerList 	= 	new String[NUM_OF_LESSONS][2];
+				Hint 		= 	new String[NUM_OF_LESSONS][10];
+				Objects 	= 	new Element[NUM_OF_LESSONS][4];
+				ObjectCount = 	new int[NUM_OF_LESSONS];
+				
+				LessonInfo = new String[NUM_OF_LESSONS][4];
+				LessonInfoCount = new int[NUM_OF_LESSONS];
+				
+				/* **************************************
+				 * 
+				 * 
+				 * 
+				 * First Lesson
+				 ************************************** */
+
+				/* Question strings *
+				********************/
+				Question[0][0] = " We need to create a triangle the height " +
+						"of the symbol";
+				Question[0][1] = " (40 meters) which extends 30 meters to " +
+						"the left. How";
+				Question[0][2] = " long must the hypotenuse be to complete " +
+						"our crop circle?";
+				
+				/* Question line count *
+				***********************/
+				QuestionLines[0] = 3;
+				
+				/* Answer Strings  *
+				********************/
+				AnswerList[0][0] = "A. 30 meters		B. 45 meters";
+				AnswerList[0][1] = "C. 900 meters		D. 50 meters";
+				
+				/* Answer key       *
+				 ********************/
+				Answer[0] = "D";
+
+				/* Hint strings    *
+				********************/
+				Hint[0][0] = " Pythagorean Theorem States:";
+				Hint[0][1] = " 		A^2 + B^2 = C^2";
+				Hint[0][2] = " Where A and B are sides of a triangle, " +
+						"and C is the hypotenuse";
+				
+				/* Hint line count  *
+				********************/
+				HintLines[0] = 3;
+
+				/* Lesson objects  *
+				********************/
+				Objects[0][0] = new Element(gl, 0.25f, 0.25f, screenW / 2,
+						screenH / 3, -1f, Cropcircle_Texture_1, "crop_circle",
+						Element.elmType.STATIC);
+				
+				/* Lesson object count *
+				***********************/
+				ObjectCount[0] = 1;
+				
+				/* Lesson additional information  *
+				***********************************/
+				LessonInfo[0][0] = "W...40ft";
+				LessonInfo[0][1] = "H:...40ft";
+				
+				/* Lesson info line count  *
+				***************************/
+				LessonInfoCount[0] = 2;
+				
+
+				/* **************************************
+				 * 
+				 * 
+				 * 
+				 * Second Lesson
+				 * **************************************/
+
+				/* Question strings *
+				********************/
+				Question[1][0] = " We must place a circle that perfectly " +
+						"surrounds this symbol,";
+				Question[1][1] = " what is the circumference needed to " +
+						"complete the crop circle?";
+				
+				/* Question line count *
+				***********************/
+				QuestionLines[1] = 2;
+				
+				/* Answer Strings  *
+				********************/
+				AnswerList[1][0] = "A. 90.6 meters		B. 125.6 meters";
+				AnswerList[1][1] = "C. 135 meters		D. 150.6 meters";
+
+				/* Answer key       *
+				********************/
+				Answer[1] = "B";
+
+				/* Hint strings    *
+				********************/
+				Hint[1][0] = " Circumference of a circle:";
+				Hint[1][1] = " 		C = 2 * PI * Radius";
+				
+				/* Hint line count *
+				********************/
+				HintLines[1] = 2;
+
+				/* Lesson objects  *
+				********************/
+				Objects[1][0] = new Element(gl, 0.25f, 0.25f, screenW / 2,
+						screenH / 3, -1f, Cropcircle_Texture_2, "crop_circle",
+						Element.elmType.STATIC);
+				
+				/* Lesson object count  *
+				*************************/
+				ObjectCount[1] = 1;
+				
+				/* Lesson additional information  *
+				***********************************/
+				LessonInfo[1][0] = "W:...40ft";
+				LessonInfo[1][1] = "H:...40ft";
+				
+				/* Lesson info line count  *
+				***************************/
+				LessonInfoCount[1] = 2;
+			}
+
+			private void SeventhGrade(GL10 gl) {
+				// TODO Auto-generated method stub
+
+			}
+
+			private void SixthGrade(GL10 gl) {
+				// TODO Auto-generated method stub
+
+			}
+
+			private void FifthGrade(GL10 gl) {
+				// TODO Auto-generated method stub
+
+			}
+
+			private void FourthGrade(GL10 gl) {
+				// TODO Auto-generated method stub
+
+			}
+
+			private void ThirdGrade(GL10 gl) {
+				// TODO Auto-generated method stub
+
+			}
+
+			private void SecondGrade(GL10 gl) {
+				// TODO Auto-generated method stub
+
+			}
+
+			private void FirstGrade(GL10 gl) {
+				// TODO Auto-generated method stub
+
+			}
+			
+			/**
+			 * Calls the correct lesson according to the level 'lvl' chosen
+			 * @param gl
+			 * @param lvl
+			 */
 			private void populateBank(GL10 gl, int lvl) {
 				switch (lvl) {
 
@@ -1408,19 +1894,15 @@ public class MathCrops extends Activity {
 					break;
 				}
 			}
-
+			
 			/**
-			 * Various functionality & get/set methods
+			 * Various getter methods
 			 */
 			public int getObjectCount(int i) {
 				return ObjectCount[i];
 			}
 
 			public int getNumberOfLessons() {
-				/*
-				 * FUTURE: depending on the number of lessons for each grade
-				 * level present this value should be different.
-				 */
 				return NUM_OF_LESSONS;
 			}
 
@@ -1447,133 +1929,40 @@ public class MathCrops extends Activity {
 			public String getHintAtLine(int i, int l) {
 				return Hint[i][l];
 			}
-
-			public void drawObjectsForLesson(GL10 gl, int i) {
-				for (int j = 0; j < getObjectCount(i); j++) {
-					Objects[i][j].draw(gl);
-				}
+			
+			public String getLessonInfoAt(int i, int l) {
+				return LessonInfo[i][l];
+			}
+			
+			public int getLessonInfoCountAt(int i) {
+				return LessonInfoCount[i];
 			}
 
-			/**
-			 * Bank Population Methods
-			 */
-			private void TwelfthGrade(GL10 gl) {
-				// TODO Auto-generated method stub
-
-			}
-
-			private void EleventhGrade(GL10 gl) {
-				// TODO Auto-generated method stub
-
-			}
-
-			private void TenthGrade(GL10 gl) {
-				// TODO Auto-generated method stub
-
-			}
-
-			private void NinthGrade(GL10 gl) {
-				// TODO Auto-generated method stub
-
-			}
-
-			private void EightGrade(GL10 gl) {
-				/**
-				 * It would be ideal to populate these from external files... ?
-				 */
-
-				/*
-				 * First Lesson
-				 */
-				Question[0][0] = " We need to create a triangle the height of the symbol";
-				Question[0][1] = " (40 meters) which extends 30 meters to the left. How";
-				Question[0][2] = " long must the hypotenuse be to complete our crop circle?";
-				QuestionLines[0] = 3;
-
-				AnswerList[0][0] = "A. 30 meters		B. 45 meters";
-				AnswerList[0][1] = "C. 900 meters		D. 50 meters";
-				Answer[0] = "D";
-
-				Hint[0][0] = " Pythagorean Theorem States:";
-				Hint[0][1] = " 		A^2 + B^2 = C^2";
-				Hint[0][2] = " Where A and B are sides of a triangle, and C is the hypotenuse";
-				HintLines[0] = 3;
-
-				Objects[0][0] = new Element(gl, 0.25f, 0.25f, screenW / 2,
-						screenH / 3, -1f, Cropcircle_Texture_2,
-						"crop_circle_1", Element.elmType.STATIC);
-				ObjectCount[0] = 1;
-
-				/*
-				 * Second Lesson
-				 */
-				Question[1][0] = " We must place a circle that perfectly surrounds this symbol,";
-				Question[1][1] = " what is the circumference needed to complete the crop circle?";
-				QuestionLines[1] = 2;
-
-				AnswerList[1][0] = "A. 90.6 meters		B. 125.6 meters";
-				AnswerList[1][1] = "C. 135 meters		D. 150.6 meters";
-
-				Answer[1] = "B";
-
-				Hint[1][0] = " Circumference of a circle:";
-				Hint[1][1] = " 		C = 2 * PI * Radius";
-				HintLines[1] = 2;
-			}
-
-			private void SeventhGrade(GL10 gl) {
-				// TODO Auto-generated method stub
-
-			}
-
-			private void SixthGrade(GL10 gl) {
-				// TODO Auto-generated method stub
-
-			}
-
-			private void FifthGrade(GL10 gl) {
-				// TODO Auto-generated method stub
-
-			}
-
-			private void FourthGrade(GL10 gl) {
-				// TODO Auto-generated method stub
-
-			}
-
-			private void ThirdGrade(GL10 gl) {
-				// TODO Auto-generated method stub
-
-			}
-
-			private void SecondGrade(GL10 gl) {
-				// TODO Auto-generated method stub
-
-			}
-
-			private void FirstGrade(GL10 gl) {
-				// TODO Auto-generated method stub
-
-			}
 		}
 
+		/**************************************************************
+		 * 
+		 * 
+		 * Unprojector:
+		 * 			Unprojects 2D screen coordinates to 3D oGL world
+		 *************************************************************/
 		public static class Unprojector {
 
 			private float depth;
-
+			private MatrixGrabber mMatrixGrabber = new MatrixGrabber();
+			
+			/**
+			 * Only information needed is the object's Z position
+			 * @param z (depth)
+			 */
 			public Unprojector(float z) {
 				depth = z;
 			}
 
 			/**
+			 * Point Picking Algorithm:
 			 * Unproject 2D touch screen coordinates to 3D world
-			 * 
-			 * @param x
-			 * @param y
-			 * @return result : type float []
 			 */
-			private MatrixGrabber mMatrixGrabber = new MatrixGrabber();
-
 			public PointF unproject(GL10 gl, PointF point) {
 				/*
 				 * Cache 2D touch location (invert y)
@@ -1607,13 +1996,12 @@ public class MathCrops extends Activity {
 			}
 		}
 
-		/**
-		 * Texture loader loads textures. (Uses a weak reference to the Activity
-		 * Context)
+		/********************************************************************
 		 * 
-		 * @author Creatrix Elit
 		 * 
-		 */
+		 * Texture loader: 
+		 * 	loads textures. (Uses a weak reference to the Activity Context)
+		 ********************************************************************/
 		public static class TextureLoader {
 
 			private static int c = 0;
@@ -1692,9 +2080,11 @@ public class MathCrops extends Activity {
 
 	}
 
-	/**
+	/************************************************************
+	 * 
+	 * 
 	 * Sound Manager
-	 */
+	 ************************************************************/
 	public static class SoundManager {
 
 		private SoundPool mSoundPool;
@@ -1703,7 +2093,6 @@ public class MathCrops extends Activity {
 		private WeakReference<Context> weakContext;
 
 		public SoundManager() {
-
 		}
 
 		public void initSounds(Context context) {
@@ -1737,7 +2126,5 @@ public class MathCrops extends Activity {
 			mSoundPool.play(mSoundPoolMap.get(index), streamVolume,
 					streamVolume, 1, 100, 1f);
 		}
-
 	}
-
 }
